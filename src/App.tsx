@@ -22,6 +22,7 @@ import SalesBrowser from "@/pages/stock/SalesBrowser";
 import StockRegister from "@/pages/stock/StockRegister";
 import StockLedger from "@/pages/stock/StockLedger";
 import Lots from "@/pages/stock/Lots";
+import StockAlerts from "@/pages/stock/StockAlerts";
 import Quotes from "@/pages/sales/Quotes";
 import SalesOrders from "@/pages/sales/SalesOrders";
 import Reservations from "@/pages/sales/Reservations";
@@ -46,6 +47,7 @@ const App = () => (
                 <Route path="stock" element={<StockRegister />} />
                 <Route path="ledger" element={<StockLedger />} />
                 <Route path="lots" element={<Lots />} />
+                <Route path="stock-alerts" element={<StockAlerts />} />
                 <Route path="grn" element={<Placeholder title="GRN / Inward" description="Goods Receipt Notes with roll-level capture." />} />
                 <Route path="qc" element={<Placeholder title="Quality Control" description="Per-roll QC and shade verification." />} />
                 <Route path="quotes" element={<Quotes />} />
