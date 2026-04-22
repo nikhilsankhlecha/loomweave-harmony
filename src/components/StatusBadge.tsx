@@ -40,7 +40,7 @@ export function StatusBadge({ status }: { status?: string | null }) {
   if (!status) return null;
   return (
     <Badge variant="outline" className={cn("font-medium uppercase tracking-wide text-[10px]", map[status])}>
-      {status.replaceAll("_", " ")}
+      {status.split("_").join(" ")}
     </Badge>
   );
 }
