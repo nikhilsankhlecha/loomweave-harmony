@@ -61,11 +61,14 @@ export default function GRN() {
     },
   });
 
-  const totals = lines.reduce((a, l) => ({
-    pieces: a.pieces + (l.pieces || 0),
-    metres: a.metres + (l.pieces || 0) * (l.l_length_metres || 0),
-    rolls: a.rolls + (l.rolls || 0),
-  }), { pieces: 0, metres: 0, rolls: 0 });
+  const totals = lines.reduce(
+    (a: { pieces: number; metres: number; rolls: number }, l) => ({
+      pieces: a.pieces + (l.pieces || 0),
+      metres: a.metres + (l.pieces || 0) * (l.l_length_metres || 0),
+      rolls: a.rolls + (l.rolls || 0),
+    }),
+    { pieces: 0, metres: 0, rolls: 0 },
+  );
 
   const createGrn = useMutation({
     mutationFn: async () => {

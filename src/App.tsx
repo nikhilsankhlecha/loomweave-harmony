@@ -26,6 +26,15 @@ import StockAlerts from "@/pages/stock/StockAlerts";
 import Quotes from "@/pages/sales/Quotes";
 import SalesOrders from "@/pages/sales/SalesOrders";
 import Reservations from "@/pages/sales/Reservations";
+import DispatchQueue from "@/pages/dispatch/DispatchQueue";
+import Approvals from "@/pages/billing/Approvals";
+import Invoices from "@/pages/billing/Invoices";
+import GRN from "@/pages/inward/GRN";
+import QC from "@/pages/inward/QC";
+import AlertsCenter from "@/pages/alerts/AlertsCenter";
+import Jobwork from "@/pages/operations/Jobwork";
+import PurchaseOrders from "@/pages/operations/PurchaseOrders";
+import Reports from "@/pages/operations/Reports";
 
 const queryClient = new QueryClient();
 
@@ -48,18 +57,18 @@ const App = () => (
                 <Route path="ledger" element={<StockLedger />} />
                 <Route path="lots" element={<Lots />} />
                 <Route path="stock-alerts" element={<StockAlerts />} />
-                <Route path="grn" element={<Placeholder title="GRN / Inward" description="Goods Receipt Notes with roll-level capture." />} />
-                <Route path="qc" element={<Placeholder title="Quality Control" description="Per-roll QC and shade verification." />} />
+                <Route path="grn" element={<GRN />} />
+                <Route path="qc" element={<QC />} />
                 <Route path="quotes" element={<Quotes />} />
                 <Route path="orders" element={<SalesOrders />} />
                 <Route path="reservations" element={<Reservations />} />
-                <Route path="dispatch" element={<Placeholder title="Dispatch Queue" description="Pick lists and proposed deductions." />} />
-                <Route path="approvals" element={<Placeholder title="Billing Approvals" description="Approve or reject proposed stock mutations." />} />
-                <Route path="invoices" element={<Placeholder title="Invoices" description="Generated invoices with PDF download." />} />
-                <Route path="alerts" element={<Placeholder title="Alerts Center" description="Low stock, demanding colour, processor overdue & more." />} />
-                <Route path="jobwork" element={<Placeholder title="Jobwork Tracker" description="Outward and return tracking for processors." />} />
-                <Route path="purchase" element={<Placeholder title="Purchase Orders" description="Auto-suggested purchase planning." />} />
-                <Route path="reports" element={<Placeholder title="Reports & Analytics" description="Operational reports across stock, sales, and dispatch." />} />
+                <Route path="dispatch" element={<DispatchQueue />} />
+                <Route path="approvals" element={<Approvals />} />
+                <Route path="invoices" element={<Invoices />} />
+                <Route path="alerts" element={<AlertsCenter />} />
+                <Route path="jobwork" element={<Jobwork />} />
+                <Route path="purchase" element={<PurchaseOrders />} />
+                <Route path="reports" element={<Reports />} />
                 <Route path="qualities" element={<Qualities />} />
                 <Route path="qualities/:id" element={<QualityDetail />} />
                 <Route path="colours" element={<Colours />} />
