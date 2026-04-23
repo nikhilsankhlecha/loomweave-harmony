@@ -43,9 +43,9 @@ export default function Auth() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-md bg-accent text-accent-foreground font-black">L</div>
+          <div className="grid h-10 w-10 place-items-center rounded-md bg-accent text-accent-foreground font-black">S</div>
           <div>
-            <div className="text-xl font-bold tracking-tight">LoomLedger</div>
+            <div className="text-xl font-bold tracking-tight">Sidharth Creation</div>
             <div className="text-xs uppercase tracking-widest opacity-70">Textile Operations Platform</div>
           </div>
         </div>
@@ -55,13 +55,13 @@ export default function Auth() {
             Quality × Colour × L-value tracking, immutable stock ledger, billing-controlled approvals, and live pitch intelligence for salesmen.
           </p>
         </div>
-        <div className="text-xs opacity-60">© LoomLedger</div>
+        <div className="text-xs opacity-60">© Sidharth Creation</div>
       </div>
       <div className="grid place-items-center p-6">
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Welcome</CardTitle>
-            <CardDescription>Sign in to your LoomLedger workspace</CardDescription>
+            <CardDescription>Sign in to your Sidharth Creation workspace</CardDescription>
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="signin">

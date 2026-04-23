@@ -40,7 +40,7 @@ export default function AppLayout() {
             <div className="flex items-center gap-2">
               <SidebarTrigger />
               <div className="hidden text-sm text-muted-foreground sm:block">
-                <span className="font-semibold text-foreground">LoomLedger</span> · Textile Operations
+                <span className="font-semibold text-foreground">Sidharth Creation</span> · Textile Operations
               </div>
             </div>
             <div className="flex items-center gap-2">

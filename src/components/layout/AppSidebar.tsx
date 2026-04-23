@@ -70,11 +70,11 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-2 py-3">
           <div className="grid h-8 w-8 place-items-center rounded-md bg-sidebar-primary text-sidebar-primary-foreground font-black">
-            L
+            S
           </div>
           {!collapsed && (
             <div className="leading-tight">
-              <div className="font-bold text-sidebar-accent-foreground tracking-tight">LoomLedger</div>
+              <div className="font-bold text-sidebar-accent-foreground tracking-tight">Sidharth Creation</div>
               <div className="text-[10px] uppercase tracking-widest text-sidebar-foreground">Textile ERP</div>
             </div>
           )}
