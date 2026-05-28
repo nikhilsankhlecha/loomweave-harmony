@@ -17,6 +17,17 @@ export const useColoursByQuality = (qualityId?: string) =>
     queryKey: ["colours", qualityId],
     enabled: !!qualityId,
     queryFn: async () => {
+      const { data, error } = await supabase.from("colours").select("*").eq("quality_id", qualityId!).eq("is_active", true).order("colour_code");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+export const useAllColoursByQuality = (qualityId?: string) =>
+  useQuery({
+    queryKey: ["colours-all", qualityId],
+    enabled: !!qualityId,
+    queryFn: async () => {
       const { data, error } = await supabase.from("colours").select("*").eq("quality_id", qualityId!).order("colour_code");
       if (error) throw error;
       return data ?? [];
@@ -34,11 +45,12 @@ export const useLValuesByQuality = (qualityId?: string) =>
     },
   });
 
-export const useWarehouses = () =>
+export const useWarehouses = (includeInactive = false) =>
   useQuery({
-    queryKey: ["warehouses"],
+    queryKey: ["warehouses", includeInactive],
     queryFn: async () => {
-      const { data, error } = await supabase.from("warehouses").select("*").order("name");
+      const q = supabase.from("warehouses").select("*").order("name");
+      const { data, error } = includeInactive ? await q : await q.eq("is_active", true);
       if (error) throw error;
       return data ?? [];
     },
