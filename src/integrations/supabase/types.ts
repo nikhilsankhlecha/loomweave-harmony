@@ -2179,6 +2179,7 @@ export type Database = {
         | "block"
         | "unblock"
         | "jobwork_return"
+        | "deduct_adjustment"
       lot_status:
         | "pending_qc"
         | "active"
@@ -2384,6 +2385,7 @@ export const Constants = {
         "block",
         "unblock",
         "jobwork_return",
+        "deduct_adjustment",
       ],
       lot_status: [
         "pending_qc",

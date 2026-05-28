@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
-import { Plus, Warehouse } from "lucide-react";
+import { Plus, Warehouse, Power } from "lucide-react";
 import { toast } from "sonner";
 import { fmtMetres } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,7 +19,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Warehouses() {
   const { hasRole } = useAuth();
   const canWrite = hasRole(["admin", "inventory"]);
-  const { data: list = [], isLoading } = useWarehouses();
+  const { data: list = [], isLoading } = useWarehouses(true);
   const qc = useQueryClient();
 
   const { data: stockTotals = [] } = useQuery({
@@ -47,6 +47,15 @@ export default function Warehouses() {
       else { const { error } = await supabase.from("warehouses").insert(form); if (error) throw error; }
     },
     onSuccess: () => { toast.success("Saved"); setOpen(false); setEditing(null); setForm({ name: "", city: "", address: "", warehouse_type: "main", is_active: true }); qc.invalidateQueries({ queryKey: ["warehouses"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleActive = useMutation({
+    mutationFn: async (w: any) => {
+      const { error } = await supabase.from("warehouses").update({ is_active: !w.is_active }).eq("id", w.id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, w: any) => { toast.success(w.is_active ? "Warehouse deactivated" : "Warehouse reactivated"); qc.invalidateQueries({ queryKey: ["warehouses"] }); },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -80,13 +89,18 @@ export default function Warehouses() {
               <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>City</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Stock</TableHead><TableHead>Status</TableHead>{canWrite && <TableHead></TableHead>}</TableRow></TableHeader>
               <TableBody>
                 {list.map((w: any) => (
-                  <TableRow key={w.id}>
+                  <TableRow key={w.id} className={!w.is_active ? "opacity-60" : ""}>
                     <TableCell className="font-medium">{w.name}</TableCell>
                     <TableCell className="text-muted-foreground">{w.city ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{w.warehouse_type ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtMetres(totals.get(w.id) ?? 0)}</TableCell>
                     <TableCell>{w.is_active ? "active" : "inactive"}</TableCell>
-                    {canWrite && <TableCell className="text-right"><Button variant="ghost" size="sm" onClick={() => { setEditing(w); setForm({ name: w.name, city: w.city ?? "", address: w.address ?? "", warehouse_type: w.warehouse_type ?? "", is_active: w.is_active }); setOpen(true); }}>Edit</Button></TableCell>}
+                    {canWrite && (
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="sm" onClick={() => { setEditing(w); setForm({ name: w.name, city: w.city ?? "", address: w.address ?? "", warehouse_type: w.warehouse_type ?? "", is_active: w.is_active }); setOpen(true); }}>Edit</Button>
+                        <Button variant="ghost" size="sm" onClick={() => toggleActive.mutate(w)} title={w.is_active ? "Deactivate" : "Reactivate"}><Power className="h-3.5 w-3.5" /></Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

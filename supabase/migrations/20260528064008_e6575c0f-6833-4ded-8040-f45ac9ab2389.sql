@@ -1,0 +1,1 @@
+ALTER TYPE ledger_entry_type ADD VALUE IF NOT EXISTS 'deduct_adjustment';
