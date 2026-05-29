@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Layers, Palette, Calculator, Warehouse, Truck, Package, ClipboardList,
   ScrollText, Users, Receipt, Bell, FileBarChart, Building2, ShieldCheck, ArrowRightLeft,
-  Boxes, FileSpreadsheet, ShoppingCart, Settings, Siren, SlidersHorizontal,
+  Boxes, FileSpreadsheet, ShoppingCart, Settings, Siren, SlidersHorizontal, Clock,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -24,6 +24,7 @@ const SECTIONS: { label: string; items: Item[] }[] = [
     { title: "Lots & Rolls", url: "/app/lots", icon: Layers, roles: ["inventory","dispatch","billing","admin"] },
     { title: "Stock Alerts", url: "/app/stock-alerts", icon: Siren, roles: ["inventory","billing","admin"] },
     { title: "Stock Adjustments", url: "/app/stock-adjustments", icon: SlidersHorizontal, roles: ["inventory","admin","dispatch"] },
+    { title: "Pending Adjustments", url: "/app/pending-adjustments", icon: Clock, roles: ["inventory","billing","admin","dispatch"] },
   ]},
   { label: "Inward", items: [
     { title: "GRN / Inward", url: "/app/grn", icon: Package, roles: ["inventory","admin"] },
