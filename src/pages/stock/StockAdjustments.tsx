@@ -11,13 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, SlidersHorizontal, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, SlidersHorizontal, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { fmtDate, fmtMetres } from "@/lib/format";
 import { useQualities, useColoursByQuality, useLValuesByQuality, useWarehouses } from "@/hooks/useMasters";
 import { useAuth } from "@/contexts/AuthContext";
 
 type Direction = "add" | "remove";
+type ColourLine = { colour_id?: string; pieces: number };
 
 export default function StockAdjustments() {
   const { user, hasRole } = useAuth();
@@ -27,10 +28,9 @@ export default function StockAdjustments() {
   const [direction, setDirection] = useState<Direction>("add");
   const [warehouseId, setWarehouseId] = useState<string | undefined>();
   const [qualityId, setQualityId] = useState<string | undefined>();
-  const [colourId, setColourId] = useState<string | undefined>();
   const [lValueId, setLValueId] = useState<string | undefined>();
   const [lLength, setLLength] = useState<number | undefined>();
-  const [pieces, setPieces] = useState<number>(0);
+  const [colourLines, setColourLines] = useState<ColourLine[]>([{ pieces: 0 }]);
   const [notes, setNotes] = useState("");
 
   const { data: warehouses = [] } = useWarehouses();
@@ -38,7 +38,10 @@ export default function StockAdjustments() {
   const { data: colours = [] } = useColoursByQuality(qualityId);
   const { data: lvalues = [] } = useLValuesByQuality(qualityId);
 
-  const metres = useMemo(() => (pieces || 0) * (lLength || 0), [pieces, lLength]);
+  const totals = useMemo(() => {
+    const pieces = colourLines.reduce((s, l) => s + (Number(l.pieces) || 0), 0);
+    return { pieces, metres: pieces * (lLength || 0) };
+  }, [colourLines, lLength]);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["stock-adjustments"],
@@ -55,33 +58,37 @@ export default function StockAdjustments() {
   });
 
   const reset = () => {
-    setDirection("add"); setWarehouseId(undefined); setQualityId(undefined); setColourId(undefined);
-    setLValueId(undefined); setLLength(undefined); setPieces(0); setNotes("");
+    setDirection("add"); setWarehouseId(undefined); setQualityId(undefined);
+    setLValueId(undefined); setLLength(undefined); setColourLines([{ pieces: 0 }]); setNotes("");
   };
 
   const create = useMutation({
     mutationFn: async () => {
-      if (!warehouseId || !qualityId || !colourId || !lValueId) throw new Error("Pick warehouse, quality, colour and L");
-      if (!pieces || pieces <= 0) throw new Error("Pieces must be greater than zero");
+      if (!warehouseId || !qualityId || !lValueId) throw new Error("Pick warehouse, quality and L");
+      const valid = colourLines.filter((l) => l.colour_id && Number(l.pieces) > 0);
+      if (!valid.length) throw new Error("Add at least one colour with pieces");
+      const ids = valid.map((l) => l.colour_id);
+      if (new Set(ids).size !== ids.length) throw new Error("Each colour can only appear once");
       const sign = direction === "add" ? 1 : -1;
-      const { error } = await supabase.from("stock_ledger").insert({
+      const rows = valid.map((l) => ({
         warehouse_id: warehouseId,
         quality_id: qualityId,
-        colour_id: colourId,
+        colour_id: l.colour_id!,
         l_value_id: lValueId,
         l_length_metres: lLength!,
-        pieces: sign * pieces,
-        metres: sign * metres,
-        entry_type: direction === "add" ? "inward_adjustment" : "deduct_adjustment",
-        approval_status: "pending",
+        pieces: sign * Number(l.pieces),
+        metres: sign * Number(l.pieces) * (lLength || 0),
+        entry_type: direction === "add" ? ("inward_adjustment" as const) : ("deduct_adjustment" as const),
+        approval_status: "pending" as const,
         proposed_by: user?.id ?? null,
         notes: notes || (direction === "add" ? "Manual stock add" : "Manual stock removal"),
         reference_type: "manual_adjustment",
-      });
+      }));
+      const { error } = await supabase.from("stock_ledger").insert(rows);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Adjustment submitted — pending billing approval");
+      toast.success("Adjustments submitted — pending billing approval");
       qc.invalidateQueries({ queryKey: ["stock-adjustments"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
       setOpen(false); reset();
@@ -112,22 +119,9 @@ export default function StockAdjustments() {
                   </div>
                   <div>
                     <Label>Quality *</Label>
-                    <Select value={qualityId} onValueChange={(v) => { setQualityId(v); setColourId(undefined); setLValueId(undefined); setLLength(undefined); }}>
+                    <Select value={qualityId} onValueChange={(v) => { setQualityId(v); setColourLines([{ pieces: 0 }]); setLValueId(undefined); setLLength(undefined); }}>
                       <SelectTrigger><SelectValue placeholder="Pick quality" /></SelectTrigger>
                       <SelectContent>{qualities.map((q: any) => <SelectItem key={q.id} value={q.id}>{q.quality_code} · {q.quality_name}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Colour *</Label>
-                    <Select value={colourId} onValueChange={setColourId} disabled={!qualityId}>
-                      <SelectTrigger><SelectValue placeholder="Pick colour" /></SelectTrigger>
-                      <SelectContent>
-                        {colours.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border" style={{ background: c.hex_preview ?? "#ccc" }} />{c.colour_code} · {c.colour_name}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
                     </Select>
                   </div>
                   <div>
@@ -137,21 +131,47 @@ export default function StockAdjustments() {
                       <SelectContent>{lvalues.map((l: any) => <SelectItem key={l.id} value={l.id}>{l.l_code} ({Number(l.length_metres).toFixed(2)} m)</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label>Pieces *</Label>
-                    <Input type="number" min={0} value={pieces} onChange={(e) => setPieces(Math.max(0, Number(e.target.value) || 0))} />
+                </div>
+                <div className="rounded-md border">
+                  <div className="flex items-center justify-between border-b bg-muted/40 px-3 py-2">
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Colours & pieces</Label>
+                    <Button variant="outline" size="sm" onClick={() => setColourLines([...colourLines, { pieces: 0 }])} disabled={!qualityId}><Plus className="mr-1 h-3 w-3" />Add colour</Button>
                   </div>
-                  <div>
-                    <Label>Metres (auto)</Label>
-                    <Input value={metres.toFixed(2)} readOnly className="bg-muted" />
-                  </div>
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Colour</TableHead><TableHead className="w-28">Pieces</TableHead><TableHead className="text-right">Metres</TableHead><TableHead className="w-10"></TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {colourLines.map((line, i) => {
+                        const usedIds = colourLines.filter((_, xi) => xi !== i).map((x) => x.colour_id);
+                        const lineMetres = (Number(line.pieces) || 0) * (lLength || 0);
+                        return (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <Select value={line.colour_id} onValueChange={(v) => setColourLines(colourLines.map((x, xi) => xi === i ? { ...x, colour_id: v } : x))} disabled={!qualityId}>
+                                <SelectTrigger className="w-[220px]"><SelectValue placeholder="Pick colour" /></SelectTrigger>
+                                <SelectContent>
+                                  {colours.filter((c: any) => !usedIds.includes(c.id)).map((c: any) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      <span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border" style={{ background: c.hex_preview ?? "#ccc" }} />{c.colour_code} · {c.colour_name}</span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell><Input type="number" min={0} value={line.pieces} onChange={(e) => setColourLines(colourLines.map((x, xi) => xi === i ? { ...x, pieces: Math.max(0, Number(e.target.value) || 0) } : x))} /></TableCell>
+                            <TableCell className="text-right tabular-nums">{fmtMetres(lineMetres)}</TableCell>
+                            <TableCell><Button variant="ghost" size="icon" onClick={() => setColourLines(colourLines.length > 1 ? colourLines.filter((_, xi) => xi !== i) : colourLines)}><Trash2 className="h-4 w-4" /></Button></TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </div>
                 <div>
                   <Label>Reason / notes</Label>
                   <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Damaged rolls, opening balance, recount…" />
                 </div>
                 <div className="rounded-md border bg-muted/40 p-3 text-sm">
-                  This will record <span className="font-semibold">{direction === "add" ? "+" : "−"}{pieces || 0} pcs / {metres.toFixed(2)} m</span> against the selected colour & warehouse, pending billing approval.
+                  This will record <span className="font-semibold">{direction === "add" ? "+" : "−"}{totals.pieces} pcs / {totals.metres.toFixed(2)} m</span> across {colourLines.filter((l) => l.colour_id && Number(l.pieces) > 0).length} colour(s), pending billing approval.
                 </div>
               </div>
               <DialogFooter><Button onClick={() => create.mutate()} disabled={create.isPending}>{create.isPending ? "Submitting…" : "Submit for approval"}</Button></DialogFooter>
