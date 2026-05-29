@@ -24,6 +24,7 @@ import StockLedger from "@/pages/stock/StockLedger";
 import Lots from "@/pages/stock/Lots";
 import StockAlerts from "@/pages/stock/StockAlerts";
 import StockAdjustments from "@/pages/stock/StockAdjustments";
+import PendingAdjustments from "@/pages/stock/PendingAdjustments";
 import Quotes from "@/pages/sales/Quotes";
 import SalesOrders from "@/pages/sales/SalesOrders";
 import Reservations from "@/pages/sales/Reservations";
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="lots" element={<Lots />} />
                 <Route path="stock-alerts" element={<StockAlerts />} />
                 <Route path="stock-adjustments" element={<StockAdjustments />} />
+                <Route path="pending-adjustments" element={<PendingAdjustments />} />
                 <Route path="grn" element={<GRN />} />
                 <Route path="qc" element={<QC />} />
                 <Route path="quotes" element={<Quotes />} />
