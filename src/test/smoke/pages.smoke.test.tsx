@@ -46,7 +46,7 @@ describe("Route smoke tests", () => {
   it("Reservations page renders", async () => {
     const Page = (await import("@/pages/sales/Reservations")).default;
     render(<Page />, { wrapper });
-    expect(await screen.findByText(/Reservations/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Reservations/i })).toBeInTheDocument();
   });
 
   it("Dispatch Queue page renders", async () => {
