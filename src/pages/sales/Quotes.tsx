@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 type Line = { quality_id?: string; colour_id?: string; l_value_id?: string; l_length_metres?: number; pieces: number; unit_rate: number };
 const blankLine: Line = { pieces: 0, unit_rate: 0 };
 
-const LineRow = memo(function LineRow({ line, onChange, onDelete }: { line: Line; idx: number; onChange: (l: Line) => void; onDelete: () => void }) {
+const LineRow = memo(function LineRow({ line, onChange, onDelete }: { line: Line; onChange: (l: Line) => void; onDelete: () => void }) {
   const { data: qualities = [] } = useQualities(true);
   const { data: colours = [] } = useColoursByQuality(line.quality_id);
   const { data: lvalues = [] } = useLValuesByQuality(line.quality_id);
@@ -41,6 +41,12 @@ const LineRow = memo(function LineRow({ line, onChange, onDelete }: { line: Line
     </TableRow>
   );
 });
+
+function QuoteLine({ line, idx, setLines }: { line: Line; idx: number; setLines: React.Dispatch<React.SetStateAction<Line[]>> }) {
+  const onChange = useCallback((nl: Line) => setLines((prev) => prev.map((x, xi) => (xi === idx ? nl : x))), [idx, setLines]);
+  const onDelete = useCallback(() => setLines((prev) => prev.filter((_, xi) => xi !== idx)), [idx, setLines]);
+  return <LineRow line={line} onChange={onChange} onDelete={onDelete} />;
+}
 
 export default function Quotes() {
   const { user } = useAuth();
