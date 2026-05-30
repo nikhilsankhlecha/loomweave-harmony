@@ -13,7 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function Approvals() {
   const qc = useQueryClient();
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const canDecide = hasRole(["admin", "billing"]);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["approvals"],
@@ -91,10 +92,14 @@ export default function Approvals() {
                     <TableCell className="text-xs">{r.profiles?.name ?? "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.reference_type ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
-                        <Button size="sm" className="h-7 text-xs" onClick={() => approve.mutate(r)}><CheckCircle2 className="mr-1 h-3 w-3" />Approve</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => reject.mutate(r)}><XCircle className="mr-1 h-3 w-3" />Reject</Button>
-                      </div>
+                      {canDecide ? (
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" className="h-7 text-xs" onClick={() => approve.mutate(r)} disabled={approve.isPending}><CheckCircle2 className="mr-1 h-3 w-3" />Approve</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => reject.mutate(r)} disabled={reject.isPending}><XCircle className="mr-1 h-3 w-3" />Reject</Button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">billing only</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

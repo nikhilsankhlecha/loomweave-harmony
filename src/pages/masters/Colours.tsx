@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useQualities, useAllColoursByQuality } from "@/hooks/useMasters";
@@ -25,6 +26,7 @@ export default function Colours() {
   const [qid, setQid] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState("");
   const [showInactive, setShowInactive] = useState(false);
+  const debouncedSearch = useDebouncedValue(search, 180);
   const { data: colours = [] } = useAllColoursByQuality(qid);
 
   const [open, setOpen] = useState(false);
@@ -34,9 +36,9 @@ export default function Colours() {
   const filtered = useMemo(
     () => colours.filter((c: any) =>
       (showInactive || c.is_active) &&
-      (!search || `${c.colour_code} ${c.colour_name} ${c.colour_family ?? ""}`.toLowerCase().includes(search.toLowerCase()))
+      (!debouncedSearch || `${c.colour_code} ${c.colour_name} ${c.colour_family ?? ""}`.toLowerCase().includes(debouncedSearch.toLowerCase()))
     ),
-    [colours, search, showInactive]
+    [colours, debouncedSearch, showInactive]
   );
 
   const save = useMutation({
