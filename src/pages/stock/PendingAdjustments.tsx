@@ -95,8 +95,8 @@ export default function PendingAdjustments() {
             <CardContent className="flex flex-wrap items-center gap-6 p-4 text-sm">
               <div><span className="text-muted-foreground">Submissions: </span><span className="font-semibold tabular-nums">{groups.length}</span></div>
               <div><span className="text-muted-foreground">Colour lines: </span><span className="font-semibold tabular-nums">{data.length}</span></div>
-              <div><span className="text-muted-foreground">Net pieces: </span><span className={`font-semibold tabular-nums ${totalPieces >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{totalPieces > 0 ? "+" : ""}{Math.round(totalPieces).toLocaleString("en-IN")}</span></div>
-              <div><span className="text-muted-foreground">Net metres: </span><span className={`font-semibold tabular-nums ${totalMetres >= 0 ? "text-emerald-600" : "text-rose-600"}`}>{totalMetres > 0 ? "+" : ""}{fmtMetres(totalMetres)}</span></div>
+              <div><span className="text-muted-foreground">Net pieces: </span><span className={`font-semibold tabular-nums ${totalPieces >= 0 ? "text-success" : "text-destructive"}`}>{totalPieces > 0 ? "+" : ""}{Math.round(totalPieces).toLocaleString("en-IN")}</span></div>
+              <div><span className="text-muted-foreground">Net metres: </span><span className={`font-semibold tabular-nums ${totalMetres >= 0 ? "text-success" : "text-destructive"}`}>{totalMetres > 0 ? "+" : ""}{fmtMetres(totalMetres)}</span></div>
             </CardContent>
           </Card>
 
@@ -134,10 +134,10 @@ export default function PendingAdjustments() {
                               <span className="text-xs text-muted-foreground">{l.colours?.colour_name}</span>
                             </span>
                           </TableCell>
-                          <TableCell className={`text-right tabular-nums ${Number(l.pieces) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                          <TableCell className={`text-right tabular-nums ${Number(l.pieces) >= 0 ? "text-success" : "text-destructive"}`}>
                             {Number(l.pieces) > 0 ? "+" : ""}{Number(l.pieces).toLocaleString("en-IN")}
                           </TableCell>
-                          <TableCell className={`text-right tabular-nums font-semibold ${Number(l.metres) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                          <TableCell className={`text-right tabular-nums font-semibold ${Number(l.metres) >= 0 ? "text-success" : "text-destructive"}`}>
                             {Number(l.metres) > 0 ? "+" : ""}{fmtMetres(l.metres)}
                           </TableCell>
                         </TableRow>

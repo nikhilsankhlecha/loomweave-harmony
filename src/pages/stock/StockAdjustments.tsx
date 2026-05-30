@@ -189,7 +189,7 @@ export default function StockAdjustments() {
                 {data.map((r: any) => (
                   <TableRow key={r.id}>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(r.created_at)}</TableCell>
-                    <TableCell>{r.entry_type === "inward_adjustment" ? <span className="text-emerald-600">+ Add</span> : <span className="text-rose-600">− Remove</span>}</TableCell>
+                    <TableCell>{r.entry_type === "inward_adjustment" ? <span className="text-success">+ Add</span> : <span className="text-destructive">− Remove</span>}</TableCell>
                     <TableCell>{r.warehouses?.name ?? "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{r.qualities?.quality_code}</TableCell>
                     <TableCell><span className="inline-flex items-center gap-2"><span className="h-3 w-3 rounded-sm border" style={{ background: r.colours?.hex_preview ?? "#ccc" }} />{r.colours?.colour_code}</span></TableCell>
