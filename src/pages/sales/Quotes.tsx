@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 type Line = { quality_id?: string; colour_id?: string; l_value_id?: string; l_length_metres?: number; pieces: number; unit_rate: number };
 const blankLine: Line = { pieces: 0, unit_rate: 0 };
 
-function LineRow({ line, idx, onChange, onDelete }: { line: Line; idx: number; onChange: (l: Line) => void; onDelete: () => void }) {
+const LineRow = memo(function LineRow({ line, onChange, onDelete }: { line: Line; idx: number; onChange: (l: Line) => void; onDelete: () => void }) {
   const { data: qualities = [] } = useQualities(true);
   const { data: colours = [] } = useColoursByQuality(line.quality_id);
   const { data: lvalues = [] } = useLValuesByQuality(line.quality_id);
@@ -40,7 +40,7 @@ function LineRow({ line, idx, onChange, onDelete }: { line: Line; idx: number; o
       <TableCell><Button variant="ghost" size="icon" onClick={onDelete}><Trash2 className="h-4 w-4" /></Button></TableCell>
     </TableRow>
   );
-}
+});
 
 export default function Quotes() {
   const { user } = useAuth();
@@ -139,7 +139,14 @@ export default function Quotes() {
                   <Table>
                     <TableHeader><TableRow><TableHead>Quality</TableHead><TableHead>Colour</TableHead><TableHead>L</TableHead><TableHead>Pieces</TableHead><TableHead className="text-right">Metres</TableHead><TableHead>Rate /m</TableHead><TableHead className="text-right">Value</TableHead><TableHead></TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {lines.map((l, i) => <LineRow key={i} line={l} idx={i} onChange={(nl) => setLines(lines.map((x, xi) => xi === i ? nl : x))} onDelete={() => setLines(lines.filter((_, xi) => xi !== i))} />)}
+                      {lines.map((l, i) => (
+                        <QuoteLine
+                          key={i}
+                          line={l}
+                          idx={i}
+                          setLines={setLines}
+                        />
+                      ))}
                     </TableBody>
                   </Table>
                 </div>

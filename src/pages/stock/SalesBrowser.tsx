@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -21,6 +22,7 @@ function PitchBadge({ score }: { score: number }) {
 export default function SalesBrowser() {
   const [search, setSearch] = useState("");
   const [minMetres, setMinMetres] = useState(1);
+  const debouncedSearch = useDebouncedValue(search, 180);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["browser"],
@@ -37,9 +39,9 @@ export default function SalesBrowser() {
   const filtered = useMemo(
     () => data
       .filter((r: any) => Number(r.available_metres ?? 0) >= minMetres)
-      .filter((r: any) => !search || `${r.quality_code} ${r.quality_name} ${r.colour_code} ${r.colour_name} ${r.colour_family ?? ""} ${r.shade_band ?? ""}`.toLowerCase().includes(search.toLowerCase()))
+      .filter((r: any) => !debouncedSearch || `${r.quality_code} ${r.quality_name} ${r.colour_code} ${r.colour_name} ${r.colour_family ?? ""} ${r.shade_band ?? ""}`.toLowerCase().includes(debouncedSearch.toLowerCase()))
       .sort((a: any, b: any) => (b.pitch_score ?? 0) - (a.pitch_score ?? 0)),
-    [data, search, minMetres]
+    [data, debouncedSearch, minMetres]
   );
 
   return (
