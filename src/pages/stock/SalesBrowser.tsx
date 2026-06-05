@@ -7,7 +7,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, Boxes, ArrowRight } from "lucide-react";
+import { Search, Boxes, ArrowRight, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportToCsv, exportToPdf } from "@/lib/export";
 import { EmptyState } from "@/components/EmptyState";
 import { fmtMetres } from "@/lib/format";
 import { Link } from "react-router-dom";
@@ -53,6 +55,41 @@ export default function SalesBrowser() {
             <div className="flex flex-1 items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><Input className="max-w-sm" placeholder="Search quality, colour, family, shade…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
             <div className="flex items-center gap-2 text-sm"><span className="text-muted-foreground">Min metres</span><Input type="number" className="w-24" value={minMetres} onChange={(e) => setMinMetres(Number(e.target.value) || 0)} /></div>
             <span className="ml-auto text-xs text-muted-foreground">{filtered.length} sellable SKUs</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={filtered.length === 0}><Download className="mr-1 h-4 w-4" />Export</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => exportToPdf("stock-browser", "Stock Browser", [
+                  { header: "Quality Code", accessor: (r: any) => r.quality_code },
+                  { header: "Quality", accessor: (r: any) => r.quality_name },
+                  { header: "Colour Code", accessor: (r: any) => r.colour_code },
+                  { header: "Colour", accessor: (r: any) => r.colour_name },
+                  { header: "Family", accessor: (r: any) => r.colour_family ?? "" },
+                  { header: "Shade", accessor: (r: any) => r.shade_band ?? "" },
+                  { header: "Available (m)", accessor: (r: any) => Number(r.available_metres ?? 0).toFixed(2) },
+                  { header: "Reserved (m)", accessor: (r: any) => Number(r.reserved_metres ?? 0).toFixed(2) },
+                  { header: "Total (m)", accessor: (r: any) => Number(r.total_metres ?? 0).toFixed(2) },
+                  { header: "Pitch", accessor: (r: any) => r.pitch_score ?? 0 },
+                ], filtered)}>
+                  <FileText className="mr-2 h-4 w-4" />Export to PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportToCsv("stock-browser", [
+                  { header: "Quality Code", accessor: (r: any) => r.quality_code },
+                  { header: "Quality", accessor: (r: any) => r.quality_name },
+                  { header: "Colour Code", accessor: (r: any) => r.colour_code },
+                  { header: "Colour", accessor: (r: any) => r.colour_name },
+                  { header: "Family", accessor: (r: any) => r.colour_family ?? "" },
+                  { header: "Shade", accessor: (r: any) => r.shade_band ?? "" },
+                  { header: "Available (m)", accessor: (r: any) => Number(r.available_metres ?? 0).toFixed(2) },
+                  { header: "Reserved (m)", accessor: (r: any) => Number(r.reserved_metres ?? 0).toFixed(2) },
+                  { header: "Total (m)", accessor: (r: any) => Number(r.total_metres ?? 0).toFixed(2) },
+                  { header: "Pitch", accessor: (r: any) => r.pitch_score ?? 0 },
+                ], filtered)}>
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />Export to Excel / CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           {isLoading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> :
             filtered.length === 0 ? <EmptyState icon={Boxes} title="Nothing to sell" description="Adjust filters or check stock levels." /> : (
