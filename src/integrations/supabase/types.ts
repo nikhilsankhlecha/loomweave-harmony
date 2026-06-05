@@ -1359,6 +1359,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          challan_number: string | null
           created_at: string
           customer_id: string | null
           expires_at: string | null
@@ -1372,6 +1373,7 @@ export type Database = {
           total_value: number | null
         }
         Insert: {
+          challan_number?: string | null
           created_at?: string
           customer_id?: string | null
           expires_at?: string | null
@@ -1385,6 +1387,7 @@ export type Database = {
           total_value?: number | null
         }
         Update: {
+          challan_number?: string | null
           created_at?: string
           customer_id?: string | null
           expires_at?: string | null
