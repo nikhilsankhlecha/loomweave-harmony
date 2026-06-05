@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -10,7 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, ClipboardList } from "lucide-react";
+import { Plus, Trash2, ClipboardList, Pencil, Search, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { exportToCsv, exportToPdf } from "@/lib/export";
 import { toast } from "sonner";
 import { fmtDate, fmtINR, fmtMetres, generateCode } from "@/lib/format";
 import { EmptyState } from "@/components/EmptyState";
@@ -53,9 +56,18 @@ export default function Quotes() {
   const qc = useQueryClient();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState<string | undefined>();
   const [notes, setNotes] = useState("");
+  const [challanNumber, setChallanNumber] = useState("");
   const [lines, setLines] = useState<Line[]>([{ ...blankLine }]);
+
+  // Filters
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 180);
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["quotes"],
@@ -65,41 +77,100 @@ export default function Quotes() {
     },
   });
 
+  const filtered = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase();
+    return (data as any[]).filter((row) => {
+      if (statusFilter !== "all" && row.status !== statusFilter) return false;
+      if (fromDate && new Date(row.created_at) < new Date(fromDate)) return false;
+      if (toDate) {
+        const end = new Date(toDate); end.setHours(23, 59, 59, 999);
+        if (new Date(row.created_at) > end) return false;
+      }
+      if (q) {
+        const hay = `${row.quote_code ?? ""} ${row.customers?.name ?? ""} ${row.challan_number ?? ""} ${row.notes ?? ""}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [data, debouncedSearch, statusFilter, fromDate, toDate]);
+
+  const resetForm = useCallback(() => {
+    setEditingId(null);
+    setLines([{ ...blankLine }]);
+    setCustomerId(undefined);
+    setNotes("");
+    setChallanNumber("");
+  }, []);
+
+  const openEdit = async (quoteId: string) => {
+    const { data: q, error } = await supabase.from("quotes").select("*, quote_items(*)").eq("id", quoteId).single();
+    if (error || !q) { toast.error("Failed to load quote"); return; }
+    setEditingId(quoteId);
+    setCustomerId(q.customer_id ?? undefined);
+    setNotes(q.notes ?? "");
+    setChallanNumber((q as any).challan_number ?? "");
+    setLines((q.quote_items as any[]).map((i) => ({
+      quality_id: i.quality_id, colour_id: i.colour_id, l_value_id: i.l_value_id,
+      l_length_metres: Number(i.l_length_metres), pieces: Number(i.pieces), unit_rate: Number(i.unit_rate ?? 0),
+    })));
+    setOpen(true);
+  };
+
   const totals = lines.reduce((a, l) => {
     const m = (l.pieces || 0) * (l.l_length_metres || 0);
     return { pieces: a.pieces + (l.pieces || 0), metres: a.metres + m, value: a.value + m * (l.unit_rate || 0) };
   }, { pieces: 0, metres: 0, value: 0 });
 
-  const createQuote = useMutation({
+  const saveQuote = useMutation({
     mutationFn: async () => {
       if (!customerId) throw new Error("Pick a customer");
       const valid = lines.filter((l) => l.quality_id && l.colour_id && l.l_value_id && l.pieces > 0);
       if (valid.length === 0) throw new Error("Add at least one line");
-      const code = generateCode("QT");
       const expires = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString();
 
-      const { data: quote, error: qErr } = await supabase.from("quotes").insert({
-        quote_code: code, customer_id: customerId, salesman_id: user!.id, status: "reservation_active",
-        total_pieces: totals.pieces, total_metres: totals.metres, total_value: totals.value, notes, expires_at: expires,
-      }).select().single();
-      if (qErr) throw qErr;
+      let quoteId: string;
+      if (editingId) {
+        const { error: uErr } = await supabase.from("quotes").update({
+          customer_id: customerId,
+          total_pieces: totals.pieces, total_metres: totals.metres, total_value: totals.value,
+          notes, challan_number: challanNumber || null,
+        }).eq("id", editingId);
+        if (uErr) throw uErr;
+        quoteId = editingId;
+        await supabase.from("quote_items").delete().eq("quote_id", quoteId);
+        await supabase.from("reservations").delete().eq("quote_id", quoteId);
+      } else {
+        const code = generateCode("QT");
+        const { data: quote, error: qErr } = await supabase.from("quotes").insert({
+          quote_code: code, customer_id: customerId, salesman_id: user!.id, status: "reservation_active",
+          total_pieces: totals.pieces, total_metres: totals.metres, total_value: totals.value,
+          notes, challan_number: challanNumber || null, expires_at: expires,
+        }).select().single();
+        if (qErr) throw qErr;
+        quoteId = quote.id;
+      }
 
       const items = valid.map((l) => {
         const m = (l.pieces || 0) * (l.l_length_metres || 0);
-        return { quote_id: quote.id, quality_id: l.quality_id!, colour_id: l.colour_id!, l_value_id: l.l_value_id!,
+        return { quote_id: quoteId, quality_id: l.quality_id!, colour_id: l.colour_id!, l_value_id: l.l_value_id!,
           l_length_metres: l.l_length_metres!, pieces: l.pieces, metres: m, unit_rate: l.unit_rate || 0, line_value: m * (l.unit_rate || 0) };
       });
       const { error: iErr } = await supabase.from("quote_items").insert(items);
       if (iErr) throw iErr;
 
-      const reservations = valid.map((l) => ({ quote_id: quote.id, quality_id: l.quality_id!, colour_id: l.colour_id!,
+      const reservations = valid.map((l) => ({ quote_id: quoteId, quality_id: l.quality_id!, colour_id: l.colour_id!,
         l_value_id: l.l_value_id!, pieces: l.pieces, metres: (l.pieces || 0) * (l.l_length_metres || 0),
         reservation_type: "soft" as const, reserved_by: user!.id, expires_at: expires }));
       await supabase.from("reservations").insert(reservations);
 
-      return quote;
+      return { id: quoteId, editing: !!editingId };
     },
-    onSuccess: () => { toast.success("Quote created — soft reservation active for 7 days"); qc.invalidateQueries({ queryKey: ["quotes"] }); setOpen(false); setLines([{ ...blankLine }]); setCustomerId(undefined); setNotes(""); },
+    onSuccess: (r) => {
+      toast.success(r.editing ? "Quote updated" : "Quote created — soft reservation active for 7 days");
+      qc.invalidateQueries({ queryKey: ["quotes"] });
+      setOpen(false);
+      resetForm();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -128,17 +199,29 @@ export default function Quotes() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const exportColumns = [
+    { header: "Quote", accessor: (r: any) => r.quote_code },
+    { header: "Challan No.", accessor: (r: any) => r.challan_number ?? "" },
+    { header: "Date", accessor: (r: any) => fmtDate(r.created_at) },
+    { header: "Customer", accessor: (r: any) => r.customers?.name ?? "" },
+    { header: "Pieces", accessor: (r: any) => Number(r.total_pieces ?? 0) },
+    { header: "Metres", accessor: (r: any) => Number(r.total_metres ?? 0).toFixed(2) },
+    { header: "Value (INR)", accessor: (r: any) => Number(r.total_value ?? 0).toFixed(2) },
+    { header: "Status", accessor: (r: any) => r.status },
+  ];
+
   return (
     <div>
       <PageHeader title="Quotes" description="Salesman quote builder — submit creates a soft reservation, billing converts to SO."
         actions={(
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild><Button><Plus className="mr-1 h-4 w-4" />New quote</Button></DialogTrigger>
+          <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm(); }}>
+            <DialogTrigger asChild><Button onClick={resetForm}><Plus className="mr-1 h-4 w-4" />New quote</Button></DialogTrigger>
             <DialogContent className="max-w-5xl">
-              <DialogHeader><DialogTitle>Build quote</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editingId ? "Edit quote" : "Build quote"}</DialogTitle></DialogHeader>
               <div className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <div><Label>Customer *</Label><CustomerPicker value={customerId} onChange={setCustomerId} /></div>
+                  <div><Label>Challan Number</Label><Input value={challanNumber} onChange={(e) => setChallanNumber(e.target.value)} placeholder="Enter Challan No." /></div>
                   <div><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                 </div>
                 <div className="rounded-md border">
@@ -161,28 +244,93 @@ export default function Quotes() {
                   <div className="text-sm text-muted-foreground">Total: <span className="font-semibold text-foreground">{fmtMetres(totals.metres)}</span> · <span className="font-semibold text-foreground">{fmtINR(totals.value)}</span></div>
                 </div>
               </div>
-              <DialogFooter><Button onClick={() => createQuote.mutate()} disabled={createQuote.isPending}>{createQuote.isPending ? "Saving…" : "Submit quote (soft reserve)"}</Button></DialogFooter>
+              <DialogFooter>
+                <Button onClick={() => saveQuote.mutate()} disabled={saveQuote.isPending}>
+                  {saveQuote.isPending ? "Saving…" : editingId ? "Save Changes" : "Submit quote (soft reserve)"}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
       />
       <Card>
         <CardContent className="p-0">
+          <div className="flex flex-wrap items-end gap-2 border-b p-3">
+            <div className="flex flex-1 min-w-[200px] items-center gap-2">
+              <Search className="h-4 w-4 text-muted-foreground" />
+              <Input className="max-w-sm" placeholder="Search quote, customer, challan…" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="reservation_active">Reservation active</SelectItem>
+                  <SelectItem value="converted">Converted</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">From</Label>
+              <Input type="date" className="w-[150px]" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">To</Label>
+              <Input type="date" className="w-[150px]" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+            </div>
+            {(search || statusFilter !== "all" || fromDate || toDate) && (
+              <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); setFromDate(""); setToDate(""); }}>Clear</Button>
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{filtered.length} of {data.length}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" disabled={filtered.length === 0}><Download className="mr-1 h-4 w-4" />Export</Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportToPdf("quotes", "Quotes", exportColumns, filtered)}>
+                    <FileText className="mr-2 h-4 w-4" />Export to PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportToCsv("quotes", exportColumns, filtered)}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />Export to Excel / CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
           {isLoading ? <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div> :
-            data.length === 0 ? <EmptyState icon={ClipboardList} title="No quotes yet" /> : (
+            data.length === 0 ? <EmptyState icon={ClipboardList} title="No quotes yet" /> :
+            filtered.length === 0 ? <EmptyState icon={Search} title="No matches" description="Adjust filters to see results." /> : (
             <Table>
-              <TableHeader><TableRow><TableHead>Quote</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Pieces</TableHead><TableHead className="text-right">Metres</TableHead><TableHead className="text-right">Value</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Quote</TableHead><TableHead>Challan No.</TableHead><TableHead>Date</TableHead><TableHead>Customer</TableHead><TableHead className="text-right">Pieces</TableHead><TableHead className="text-right">Metres</TableHead><TableHead className="text-right">Value</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
               <TableBody>
-                {data.map((q: any) => (
+                {filtered.map((q: any) => (
                   <TableRow key={q.id}>
                     <TableCell className="font-mono">{q.quote_code}</TableCell>
+                    <TableCell className="font-mono text-xs">{q.challan_number ?? "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{fmtDate(q.created_at)}</TableCell>
                     <TableCell>{q.customers?.name ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums">{Number(q.total_pieces ?? 0).toLocaleString("en-IN")}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtMetres(q.total_metres)}</TableCell>
                     <TableCell className="text-right tabular-nums">{fmtINR(q.total_value)}</TableCell>
                     <TableCell><StatusBadge status={q.status} /></TableCell>
-                    <TableCell className="text-right">{(q.status === "reservation_active" || q.status === "submitted") && <Button size="sm" variant="outline" onClick={() => convertToSO.mutate(q.id)}>Convert to SO</Button>}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {(q.status === "reservation_active" || q.status === "submitted" || q.status === "draft") && (
+                          <Button size="icon" variant="ghost" onClick={() => openEdit(q.id)} title="Edit quote">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {(q.status === "reservation_active" || q.status === "submitted") && (
+                          <Button size="sm" variant="outline" onClick={() => convertToSO.mutate(q.id)}>Convert to SO</Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
