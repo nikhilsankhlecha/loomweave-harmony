@@ -42,7 +42,15 @@ export default function SalesBrowser() {
     () => data
       .filter((r: any) => Number(r.available_metres ?? 0) >= minMetres)
       .filter((r: any) => !debouncedSearch || `${r.quality_code} ${r.quality_name} ${r.colour_code} ${r.colour_name} ${r.colour_family ?? ""} ${r.shade_band ?? ""}`.toLowerCase().includes(debouncedSearch.toLowerCase()))
-      .sort((a: any, b: any) => (b.pitch_score ?? 0) - (a.pitch_score ?? 0)),
+      .sort((a: any, b: any) => {
+        const qa = String(a.quality_code ?? "");
+        const qb = String(b.quality_code ?? "");
+        const qcmp = qa.localeCompare(qb, undefined, { numeric: true, sensitivity: "base" });
+        if (qcmp !== 0) return qcmp;
+        const ca = String(a.colour_code ?? "");
+        const cb = String(b.colour_code ?? "");
+        return ca.localeCompare(cb, undefined, { numeric: true, sensitivity: "base" });
+      }),
     [data, debouncedSearch, minMetres]
   );
 
